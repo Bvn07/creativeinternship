@@ -63,3 +63,15 @@ async def update_user(id: str, updated_data: dict):
         return {"message": "User updated successfully"}
 
     return {"error": "User not found or no changes applied"}
+
+
+@router.delete("/users/{id}")
+async def delete_user(id: str):
+    from bson import ObjectId
+
+    result = await db["users"].delete_one({"_id": ObjectId(id)})
+
+    if result.deleted_count == 1:
+        return {"message": "User deleted successfully"}
+
+    return {"error": "User not found"}
