@@ -48,3 +48,18 @@ async def get_users():
         del document["_id"]                     
         users.append(document)
     return users
+
+
+@router.put("/users/{id}")
+async def update_user(id: str, updated_data: dict):
+    from bson import ObjectId
+
+    result = await db["users"].update_one(
+        {"_id": ObjectId(id)},
+        {"$set": updated_data}
+    )
+
+    if result.modified_count == 1:
+        return {"message": "User updated successfully"}
+
+    return {"error": "User not found or no changes applied"}
