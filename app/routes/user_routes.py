@@ -37,3 +37,14 @@ async def update_user(id: str, user: User):
 async def delete_user(id: str):
     await db.users.delete_one({"_id": ObjectId(id)})
     return {"message": "User deleted"}
+
+
+@router.get("/users")
+async def get_users():
+    users = []
+    cursor = db["users"].find({})
+    async for document in cursor:
+        document["id"] = str(document["_id"])  
+        del document["_id"]                     
+        users.append(document)
+    return users
