@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from app.models.scratch_card import ScratchCard
 from app.database import db
 from datetime import datetime, timedelta
@@ -14,7 +14,6 @@ async def generate_scratch_cards(numberOfScratchCards: int):
     Each new card expires in 5 days and has a random discount between 0-1000.
     """
 
-    
     active_cards_count = await db["scratch_cards"].count_documents({"isUsed": False})
 
     if active_cards_count >= numberOfScratchCards:
@@ -38,3 +37,21 @@ async def generate_scratch_cards(numberOfScratchCards: int):
         "message": f"{numberOfScratchCards} scratch cards created successfully",
         "scratchCards": new_cards
     }
+
+
+
+@router.get("/scratch-cards/unused")
+async def get_unused_scratch_cards():
+    """Fetch all unused and unexpired scratch cards."""
+    now = datetime.utcnow()
+    cursor = db["scratch_cards"].find({"isUsed": False, "expiryDate": {"$gt": now}})
+    unused_cards = []
+
+    async for card in cursor:
+        card["_id"] = str(card["_id"]) 
+        unused_cards.append(card)
+
+    if not unused_cards:
+        raise HTTPException(status_code=404, detail="No unused scratch cards found")
+
+    return {"unusedScratchCards": unused_cards}
