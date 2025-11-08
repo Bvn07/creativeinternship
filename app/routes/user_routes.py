@@ -32,6 +32,16 @@ async def get_users():
     return users
 
 
+
+@router.get("/users/count")
+async def get_user_count():
+    try:
+        count = await db["users"].count_documents({})
+        return {"totalUsers": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching user count: {str(e)}")
+
+
 @router.get("/users/{id}")
 async def get_user(id: str):
     try:
