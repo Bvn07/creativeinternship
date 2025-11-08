@@ -1,10 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from app.models.user import User
 from app.database import db
 from bson import ObjectId
 
 router = APIRouter()
 
+# Helper function to convert MongoDB user object to JSON serializable dict
 def serialize_user(user) -> dict:
     return {
         "id": str(user["_id"]),
@@ -13,65 +14,62 @@ def serialize_user(user) -> dict:
         "age": user["age"]
     }
 
+
+# ✅ CREATE user (POST)
 @router.post("/users")
 async def create_user(user: User):
-    result = await db.users.insert_one(user.dict())
-    return {"id": str(result.inserted_id), **user.dict()}
-
-@router.get("/users")
-async def get_users():
-    users = await db.users.find().to_list(100)
-    return [serialize_user(user) for user in users]
-
-@router.get("/users/{id}")
-async def get_user(id: str):
-    user = await db.users.find_one({"_id": ObjectId(id)})
-    return serialize_user(user)
-
-@router.put("/users/{id}")
-async def update_user(id: str, user: User):
-    await db.users.update_one({"_id": ObjectId(id)}, {"$set": user.dict()})
-    return {"message": "User updated"}
-
-@router.delete("/users/{id}")
-async def delete_user(id: str):
-    await db.users.delete_one({"_id": ObjectId(id)})
-    return {"message": "User deleted"}
+    result = await db["users"].insert_one(user.dict())
+    created_user = await db["users"].find_one({"_id": result.inserted_id})
+    return serialize_user(created_user)
 
 
+# ✅ READ all users (GET)
 @router.get("/users")
 async def get_users():
     users = []
     cursor = db["users"].find({})
     async for document in cursor:
-        document["id"] = str(document["_id"])  
-        del document["_id"]                     
-        users.append(document)
+        users.append(serialize_user(document))
     return users
 
 
+# ✅ READ user by id (GET)
+@router.get("/users/{id}")
+async def get_user(id: str):
+    try:
+        user = await db["users"].find_one({"_id": ObjectId(id)})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return serialize_user(user)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+
+
+# ✅ UPDATE user by id (PUT)
 @router.put("/users/{id}")
-async def update_user(id: str, updated_data: dict):
-    from bson import ObjectId
+async def update_user(id: str, user: User):
+    try:
+        result = await db["users"].update_one(
+            {"_id": ObjectId(id)}, {"$set": user.dict()}
+        )
 
-    result = await db["users"].update_one(
-        {"_id": ObjectId(id)},
-        {"$set": updated_data}
-    )
+        if result.modified_count == 1:
+            return {"message": "User updated successfully"}
 
-    if result.modified_count == 1:
-        return {"message": "User updated successfully"}
-
-    return {"error": "User not found or no changes applied"}
+        raise HTTPException(status_code=404, detail="User not found or no changes applied")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
 
 
+# ✅ DELETE user by id (DELETE)
 @router.delete("/users/{id}")
 async def delete_user(id: str):
-    from bson import ObjectId
+    try:
+        result = await db["users"].delete_one({"_id": ObjectId(id)})
 
-    result = await db["users"].delete_one({"_id": ObjectId(id)})
+        if result.deleted_count == 1:
+            return {"message": "User deleted successfully"}
 
-    if result.deleted_count == 1:
-        return {"message": "User deleted successfully"}
-
-    return {"error": "User not found"}
+        raise HTTPException(status_code=404, detail="User not found")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
