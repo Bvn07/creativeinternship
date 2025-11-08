@@ -5,7 +5,7 @@ from bson import ObjectId
 
 router = APIRouter()
 
-# Helper function to convert MongoDB user object to JSON serializable dict
+
 def serialize_user(user) -> dict:
     return {
         "id": str(user["_id"]),
@@ -15,7 +15,6 @@ def serialize_user(user) -> dict:
     }
 
 
-# ✅ CREATE user (POST)
 @router.post("/users")
 async def create_user(user: User):
     result = await db["users"].insert_one(user.dict())
@@ -23,7 +22,7 @@ async def create_user(user: User):
     return serialize_user(created_user)
 
 
-# ✅ READ all users (GET)
+
 @router.get("/users")
 async def get_users():
     users = []
@@ -33,7 +32,6 @@ async def get_users():
     return users
 
 
-# ✅ READ user by id (GET)
 @router.get("/users/{id}")
 async def get_user(id: str):
     try:
@@ -45,12 +43,13 @@ async def get_user(id: str):
         raise HTTPException(status_code=400, detail="Invalid user ID")
 
 
-# ✅ UPDATE user by id (PUT)
+
 @router.put("/users/{id}")
 async def update_user(id: str, user: User):
     try:
         result = await db["users"].update_one(
-            {"_id": ObjectId(id)}, {"$set": user.dict()}
+            {"_id": ObjectId(id)},
+            {"$set": user.dict()}
         )
 
         if result.modified_count == 1:
@@ -61,12 +60,11 @@ async def update_user(id: str, user: User):
         raise HTTPException(status_code=400, detail="Invalid user ID")
 
 
-# ✅ DELETE user by id (DELETE)
+
 @router.delete("/users/{id}")
 async def delete_user(id: str):
     try:
         result = await db["users"].delete_one({"_id": ObjectId(id)})
-
         if result.deleted_count == 1:
             return {"message": "User deleted successfully"}
 
